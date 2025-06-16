@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Enhanced Logistics Flowchart Builder</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/interact.js/1.10.11/interact.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+        <style>
+          body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+            background-color: #244023; /* темный фон */
+          }
+    
+          #sidebar {
+            width: 220px;
+            background: #144526; /* темно-серый фон */
+            color: #e0e0e0; /* светлый текст */
+            padding: 20px;
+            border-right: 1px solid #444; /* темная граница */
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            position: fixed;  /* Используем fixed, чтобы панель оставалась на месте */
+  right: 0;  /* Позиционируем панель справа */
+  top: 0;  /* Фиксируем на верхней части экрана */
+  height: 100vh;  /* Устанавливаем высоту на весь экран */
+  z-index: 1000; 
+  background: transparent;
+          }
+         
+          #canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+          }
+    
+          #canvas {
+            position: absolute;
+            width: 3000px;
+            height: 3000px;
+            background: #4a7252; /* темно-серый фон для канваса */
+            background-image: radial-gradient(#555 1px, transparent 1px);
+            background-size: 20px 20px;
+            transform-origin: 0 0;
+          }
+    
+          .node {
+            position: absolute;
+            width: 120px;
+            height: 60px;
+            border: 2px solid #333; /* темная рамка */
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: move;
+            background-color: #333; /* темный фон для узлов */
+            color: #e0e0e0; /* светлый текст */
+            transition: box-shadow 0.3s;
+          }
+    
+          .node:hover {
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.2); /* светлый эффект на ховере */
+          }
+    
+          .node-type {
+            font-weight: bold;
+            margin-bottom: 5px;
+          }
+    
+          .node-label {
+            font-size: 0.9em;
+            word-break: break-word;
+            text-align: center;
+            padding: 0 5px;
+          }
+    
+          .delete-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 16px;
+            height: 16px;
+            background: #f44336; /* красная кнопка удаления */
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            cursor: pointer;
+            visibility: hidden;
+          }
+    
+          .node:hover .delete-btn {
+            visibility: visible;
+          }
+    
+          button {
+            margin: 5px 0;
+            padding: 8px 15px;
+            background: #444; /* темная кнопка */
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+          }
+    
+          button:hover {
+            background: #666; /* светлый ховер для кнопки */
+          }
+    
+          button:disabled {
+            background: #888; /* цвет для неактивной кнопки */
+            cursor: not-allowed;
+          }
+    
+          .connection {
+            stroke-width: 2;
+            fill: none;
+            marker-end: url(#arrowhead);
+          }
+    
+          .selected {
+            border-color: #2196f3 !important;
+            box-shadow: 0 0 10px rgba(33, 150, 243, 0.3);
+          }
+    
+          .connection-menu {
+            position: absolute;
+            background: #08400d; /* темное меню */
+            color: #e0e0e0; /* светлый текст в меню */
+            border: 1px solid #015d20; /* темная граница */
+            border-radius: 4px;
+            padding: 5px;
+            z-index: 100;
+          }
+    
+          .connection-menu button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            margin: 2px 0;
+            padding: 5px;
+            background: #444;
+            color: #e0e0e0;
+            border: none;
+            cursor: pointer;
+          }
+    
+          #zoom-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: #333; /* темный фон для зума */
+            color: #e0e0e0;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 5px;
+            display: flex;
+            flex-direction: column;
+          }
+    
+          #zoom-controls button {
+            margin: 2px;
+            background: #444;
+            color: #e0e0e0;
+            border: none;
+          }
+    
+          .connection-label {
+            font-size: 12px;
+            pointer-events: all;
+            cursor: pointer;
+            background: #333;
+            padding: 2px 5px;
+            border-radius: 3px;
+            border: 1px solid #444;
+            color: #e0e0e0;
+          }
+    
+          hr {
+            width: 100%;
+            margin: 10px 0;
+            border-color: #444;
+          }
+    
+          .button-group {
+            display: flex;
+            flex-direction: column;
+          }
+    
+          .section-title {
+            font-weight: bold;
+            margin-top: 10px;
+            margin-bottom: 5px;
+            color: #e0e0e0;
+          }
+    
+          /* Node type colors */
+          .supplier {
+            background-color: #555;
+            border-color: #444;
+          }
+    
+          .warehouse {
+            background-color: #666;
+            border-color: #444;
+          }
+    
+          .transport {
+            background-color: #777;
+            border-color: #444;
+          }
+    
+          .distribution {
+            background-color: #888;
+            border-color: #444;
+          }
+    
+          .retail {
+            background-color: #999;
+            border-color: #444;
+          }
+    
+          /* Connection styles */
+          .regular {
+            stroke: #333;
+          }
+    
+          .express {
+            stroke: #f44336;
+            stroke-dasharray: 5, 3;
+          }
+    
+          .return {
+            stroke: #4caf50;
+            stroke-dasharray: 2, 2;
+          }
+    
+          .international {
+            stroke: #2196f3;
+            stroke-width: 3;
+          }
+          
+        </style>
+    </head>
+    
+  <body>
+    <div id="sidebar">
+      <h3>Logistics Flowchart</h3>
+
+      <div class="section-title">Nodes</div>
+      <div class="button-group">
+        <button onclick="addNode('Supplier')">Add Supplier</button>
+        <button onclick="addNode('Warehouse')">Add Warehouse</button>
+        <button onclick="addNode('Transport')">Add Transport</button>
+        <button onclick="addNode('Distribution')">Add Distribution</button>
+        <button onclick="addNode('Retail')">Add Retail</button>
+      </div>
+
+      <hr />
+
+      <div class="section-title">Actions</div>
+      <div class="button-group">
+        <button id="connectBtn" onclick="toggleConnectionMode()">
+          Connect Nodes
+        </button>
+        <button onclick="exportPNG()">Save as PNG</button>
+      </div>
+
+      <hr />
+
+      <div class="section-title">History</div>
+      <div class="button-group">
+        <button id="undoBtn" onclick="undo()" disabled>Undo</button>
+        <button id="redoBtn" onclick="redo()" disabled>Redo</button>
+        <button onclick="clearCanvas()">Clear Canvas</button>
+      </div>
+    </div>
+
+    <div id="canvas-container">
+      <div id="canvas">
+        <svg
+          id="connections"
+          style="position: absolute; width: 100%; height: 100%"
+        ></svg>
+      </div>
+      <div id="zoom-controls">
+        <button onclick="zoomIn()">+</button>
+        <button onclick="resetZoom()">Reset</button>
+        <button onclick="zoomOut()">-</button>
+      </div>
+    </div>
+
+    <script>
+      // State variables
+      let nodes = [];
+      let connections = [];
+      let isConnecting = false;
+      let sourceNode = null;
+      let nodeIdCounter = 1;
+      let scale = 1;
+      let translateX = 0;
+      let translateY = 0;
+      let isDraggingCanvas = false;
+      let startX, startY;
+      let connectionMenu = null;
+      let selectedConnection = null;
+
+      // History for undo/redo
+      let history = [];
+      let historyIndex = -1;
+      let isUndoRedo = false;
+
+      // SVG setup
+      const svgNS = "http://www.w3.org/2000/svg";
+      const svg = document.getElementById("connections");
+      const defs = document.createElementNS(svgNS, "defs");
+
+      // Create arrow marker
+      const marker = document.createElementNS(svgNS, "marker");
+      marker.setAttribute("id", "arrowhead");
+      marker.setAttribute("markerWidth", "10");
+      marker.setAttribute("markerHeight", "7");
+      marker.setAttribute("refX", "10");
+      marker.setAttribute("refY", "3.5");
+      marker.setAttribute("orient", "auto");
+
+      const arrow = document.createElementNS(svgNS, "path");
+      arrow.setAttribute("d", "M0,0 L10,3.5 L0,7");
+      arrow.setAttribute("fill", "#333");
+
+      marker.appendChild(arrow);
+      defs.appendChild(marker);
+      svg.appendChild(defs);
+
+      // Initialize canvas panning
+      const canvas = document.getElementById("canvas");
+      const canvasContainer = document.getElementById("canvas-container");
+
+      canvasContainer.addEventListener("mousedown", startPan);
+      canvasContainer.addEventListener("mousemove", pan);
+      canvasContainer.addEventListener("mouseup", endPan);
+      canvasContainer.addEventListener("mouseleave", endPan);
+
+      // Add mouse wheel for zooming
+      canvasContainer.addEventListener("wheel", handleZoom);
+
+      function startPan(e) {
+        // Only start panning if not interacting with a node and right mouse button is pressed
+        if (e.target === canvas || e.target === svg || e.button === 1) {
+          isDraggingCanvas = true;
+          startX = e.clientX;
+          startY = e.clientY;
+          e.preventDefault();
+        }
+      }
+
+      function pan(e) {
+        if (!isDraggingCanvas) return;
+
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+
+        translateX += dx;
+        translateY += dy;
+
+        updateCanvasTransform();
+
+        startX = e.clientX;
+        startY = e.clientY;
+      }
+
+      function endPan() {
+        isDraggingCanvas = false;
+      }
+
+      function updateCanvasTransform() {
+        canvas.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+      }
+
+      function handleZoom(e) {
+        e.preventDefault();
+
+        const delta = -Math.sign(e.deltaY) * 0.1;
+        const newScale = Math.max(0.1, Math.min(2, scale + delta));
+
+        // Calculate zoom center (mouse position)
+        const rect = canvasContainer.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        // Adjust the translation to zoom toward mouse position
+        const factor = newScale / scale;
+        translateX = mouseX - factor * (mouseX - translateX);
+        translateY = mouseY - factor * (mouseY - translateY);
+
+        scale = newScale;
+        updateCanvasTransform();
+      }
+
+      function zoomIn() {
+        const newScale = Math.min(2, scale + 0.1);
+        scale = newScale;
+        updateCanvasTransform();
+      }
+
+      function zoomOut() {
+        const newScale = Math.max(0.1, scale - 0.1);
+        scale = newScale;
+        updateCanvasTransform();
+      }
+
+      function resetZoom() {
+        scale = 1;
+        translateX = 0;
+        translateY = 0;
+        updateCanvasTransform();
+      }
+
+      function addToHistory() {
+        if (isUndoRedo) return;
+
+        // Remove any future history if we're not at the end
+        if (historyIndex < history.length - 1) {
+          history = history.slice(0, historyIndex + 1);
+        }
+
+        // Create a deep copy of current state
+        const state = {
+          nodes: nodes.map((node) => ({
+            id: node.id,
+            type: node.classList[1],
+            label: node.querySelector(".node-label").textContent,
+            left: node.style.left,
+            top: node.style.top,
+          })),
+          connections: connections.map((conn) => ({
+            start: conn.start,
+            end: conn.end,
+            type: conn.type || "regular",
+            label: conn.label || "",
+          })),
+        };
+
+        history.push(state);
+        historyIndex = history.length - 1;
+
+        updateHistoryButtons();
+      }
+
+      function updateHistoryButtons() {
+        document.getElementById("undoBtn").disabled = historyIndex < 0;
+        document.getElementById("redoBtn").disabled =
+          historyIndex >= history.length - 1;
+      }
+
+      function undo() {
+        if (historyIndex <= 0) return;
+
+        isUndoRedo = true;
+        historyIndex--;
+        restoreState(history[historyIndex]);
+        isUndoRedo = false;
+
+        updateHistoryButtons();
+      }
+
+      function redo() {
+        if (historyIndex >= history.length - 1) return;
+
+        isUndoRedo = true;
+        historyIndex++;
+        restoreState(history[historyIndex]);
+        isUndoRedo = false;
+
+        updateHistoryButtons();
+      }
+
+      function restoreState(state) {
+        // Clear current canvas
+        clearCanvas(false);
+
+        // Restore nodes
+        state.nodes.forEach((nodeData) => {
+          const node = document.createElement("div");
+          node.className = `node ${nodeData.type}`;
+          node.id = nodeData.id;
+          node.innerHTML = `
+                    <div class="node-type">${
+                      nodeData.type.charAt(0).toUpperCase() +
+                      nodeData.type.slice(1)
+                    }</div>
+                    <div class="node-label">${nodeData.label}</div>
+                    <div class="delete-btn" onclick="deleteNode(event, '${
+                      nodeData.id
+                    }')">×</div>
+                `;
+
+          node.style.left = nodeData.left;
+          node.style.top = nodeData.top;
+
+          node.addEventListener("dblclick", () => editLabel(node));
+          node.addEventListener("click", handleNodeClick);
+
+          document.getElementById("canvas").appendChild(node);
+          nodes.push(node);
+          makeDraggable(node);
+        });
+
+        // Restore connections
+        state.connections.forEach((connData) => {
+          createConnection(
+            document.getElementById(connData.start),
+            document.getElementById(connData.end),
+            connData.type,
+            connData.label
+          );
+        });
+      }
+
+      function addNode(type) {
+        const node = document.createElement("div");
+        node.className = `node ${type.toLowerCase()}`;
+        node.id = `node-${nodeIdCounter++}`;
+        node.innerHTML = `
+                <div class="node-type">${type}</div>
+                <div class="node-label">${type} ${nodeIdCounter - 1}</div>
+                <div class="delete-btn" onclick="deleteNode(event, '${
+                  node.id
+                }')">×</div>
+            `;
+
+        // Set initial position
+        const canvasRect = canvas.getBoundingClientRect();
+        const containerRect = canvasContainer.getBoundingClientRect();
+
+        const centerX = (containerRect.width / 2 - translateX) / scale;
+        const centerY = (containerRect.height / 2 - translateY) / scale;
+
+        node.style.left = `${centerX}px`;
+        node.style.top = `${centerY}px`;
+
+        // Add event handlers
+        node.addEventListener("dblclick", () => editLabel(node));
+        node.addEventListener("click", handleNodeClick);
+
+        canvas.appendChild(node);
+        nodes.push(node);
+        makeDraggable(node);
+
+        addToHistory();
+      }
+
+      function deleteNode(event, nodeId) {
+        event.stopPropagation();
+
+        // Find the node
+        const node = document.getElementById(nodeId);
+        const nodeIndex = nodes.findIndex((n) => n.id === nodeId);
+
+        if (nodeIndex !== -1) {
+          // Remove connections involving this node
+          connections = connections.filter((conn) => {
+            if (conn.start === nodeId || conn.end === nodeId) {
+              conn.element.remove();
+              if (conn.labelElement) {
+                conn.labelElement.remove();
+              }
+              return false;
+            }
+            return true;
+          });
+
+          // Remove the node
+          node.remove();
+          nodes.splice(nodeIndex, 1);
+
+          addToHistory();
+        }
+      }
+
+      function makeDraggable(node) {
+        interact(node).draggable({
+          listeners: {
+            start: () => {
+              // Cancel connection mode if dragging a node
+              if (isConnecting && node === sourceNode) {
+                isConnecting = false;
+                sourceNode.classList.remove("selected");
+                sourceNode = null;
+                document.getElementById("connectBtn").textContent =
+                  "Connect Nodes";
+              }
+            },
+            move: (event) => {
+              const target = event.target;
+              const x = (parseFloat(target.style.left) || 0) + event.dx / scale;
+              const y = (parseFloat(target.style.top) || 0) + event.dy / scale;
+              target.style.left = `${x}px`;
+              target.style.top = `${y}px`;
+              updateConnections();
+            },
+            end: () => {
+              addToHistory();
+            },
+          },
+        });
+      }
+
+      function handleNodeClick(event) {
+        if (!isConnecting) return;
+        const node = event.currentTarget;
+
+        if (!sourceNode) {
+          sourceNode = node;
+          node.classList.add("selected");
+          document.getElementById("connectBtn").textContent =
+            "Click target node...";
+        } else {
+          if (sourceNode !== node) {
+            showConnectionMenu(sourceNode, node, event.clientX, event.clientY);
+          }
+          sourceNode.classList.remove("selected");
+          sourceNode = null;
+        }
+      }
+
+      function showConnectionMenu(source, target, x, y) {
+        // Remove any existing menu
+        if (connectionMenu) {
+          connectionMenu.remove();
+        }
+
+        // Create menu
+        connectionMenu = document.createElement("div");
+        connectionMenu.className = "connection-menu";
+        connectionMenu.style.left = `${x}px`;
+        connectionMenu.style.top = `${y}px`;
+
+        // Add connection type options
+        connectionMenu.innerHTML = `
+                <div>Connection Type:</div>
+                <button onclick="createConnectionWithType('${source.id}', '${target.id}', 'regular')">Regular</button>
+                <button onclick="createConnectionWithType('${source.id}', '${target.id}', 'express')">Express</button>
+                <button onclick="createConnectionWithType('${source.id}', '${target.id}', 'return')">Return</button>
+                <button onclick="createConnectionWithType('${source.id}', '${target.id}', 'international')">International</button>
+                <button onclick="cancelConnection()">Cancel</button>
+            `;
+
+        document.body.appendChild(connectionMenu);
+      }
+
+      function createConnectionWithType(sourceId, targetId, type) {
+        createConnection(
+          document.getElementById(sourceId),
+          document.getElementById(targetId),
+          type
+        );
+
+        connectionMenu.remove();
+        connectionMenu = null;
+        isConnecting = false;
+        document.getElementById("connectBtn").textContent = "Connect Nodes";
+
+        addToHistory();
+      }
+
+      function cancelConnection() {
+        connectionMenu.remove();
+        connectionMenu = null;
+        isConnecting = false;
+        document.getElementById("connectBtn").textContent = "Connect Nodes";
+      }
+
+      function createConnection(
+        startNode,
+        endNode,
+        type = "regular",
+        label = ""
+      ) {
+        const connection = {
+          start: startNode.id,
+          end: endNode.id,
+          type: type,
+          label: label,
+          element: document.createElementNS(svgNS, "path"),
+        };
+
+        connection.element.classList.add("connection");
+        connection.element.classList.add(type);
+        connection.element.dataset.start = startNode.id;
+        connection.element.dataset.end = endNode.id;
+
+        // Make connections clickable
+        connection.element.style.pointerEvents = "stroke";
+        connection.element.addEventListener("click", (e) =>
+          editConnection(connection, e)
+        );
+
+        svg.appendChild(connection.element);
+
+        // Add label if provided
+        if (label) {
+          addConnectionLabel(connection, label);
+        }
+
+        connections.push(connection);
+        updateConnections();
+      }
+
+      function addConnectionLabel(connection, label) {
+        const labelGroup = document.createElementNS(svgNS, "g");
+        const labelBg = document.createElementNS(svgNS, "rect");
+        const labelText = document.createElementNS(svgNS, "text");
+
+        labelText.textContent = label;
+        labelText.setAttribute("text-anchor", "middle");
+        labelText.setAttribute("dominant-baseline", "middle");
+        labelText.setAttribute("font-size", "12");
+
+        labelBg.setAttribute("rx", "3");
+        labelBg.setAttribute("ry", "3");
+        labelBg.setAttribute("fill", "white");
+        labelBg.setAttribute("stroke", "#ccc");
+        labelBg.setAttribute("stroke-width", "1");
+
+        labelGroup.appendChild(labelBg);
+        labelGroup.appendChild(labelText);
+        labelGroup.classList.add("connection-label");
+
+        // Add click handler
+        labelGroup.addEventListener("click", (e) => {
+          e.stopPropagation();
+          editConnection(connection, e);
+        });
+
+        svg.appendChild(labelGroup);
+        connection.labelElement = labelGroup;
+
+        // Size will be calculated in updateConnections
+      }
+
+      function updateConnections() {
+        connections.forEach((conn) => {
+          const startNode = document.getElementById(conn.start);
+          const endNode = document.getElementById(conn.end);
+
+          if (!startNode || !endNode) return;
+
+          const startRect = startNode.getBoundingClientRect();
+          const endRect = endNode.getBoundingClientRect();
+          const canvasRect = canvas.getBoundingClientRect();
+
+          // Calculate positions in SVG space
+          const startX =
+            (startRect.left - canvasRect.left + startRect.width / 2) / scale;
+          const startY =
+            (startRect.top - canvasRect.top + startRect.height / 2) / scale;
+          const endX =
+            (endRect.left - canvasRect.left + endRect.width / 2) / scale;
+          const endY =
+            (endRect.top - canvasRect.top + endRect.height / 2) / scale;
+
+          // Create curved path
+          const dx = endX - startX;
+          const dy = endY - startY;
+          const dr = Math.sqrt(dx * dx + dy * dy);
+
+          conn.element.setAttribute(
+            "d",
+            `M${startX},${startY} ` +
+              `C${startX + dr / 3},${startY} ` +
+              `${endX - dr / 3},${endY} ` +
+              `${endX},${endY}`
+          );
+
+          // Update label position if it exists
+          if (conn.labelElement) {
+            // Position label at the middle of the curve
+            const midX = (startX + endX) / 2;
+            const midY = (startY + endY) / 2 - 10; // Offset slightly above the curve
+
+            const labelText = conn.labelElement.querySelector("text");
+            labelText.setAttribute("x", midX);
+            labelText.setAttribute("y", midY);
+
+            // Size the background based on text
+            const bbox = labelText.getBBox();
+            const labelBg = conn.labelElement.querySelector("rect");
+            labelBg.setAttribute("x", bbox.x - 5);
+            labelBg.setAttribute("y", bbox.y - 3);
+            labelBg.setAttribute("width", bbox.width + 10);
+            labelBg.setAttribute("height", bbox.height + 6);
+          }
+        });
+      }
+
+      function editConnection(connection, event) {
+        // Show options to edit or delete connection
+        if (connectionMenu) {
+          connectionMenu.remove();
+        }
+
+        selectedConnection = connection;
+
+        connectionMenu = document.createElement("div");
+        connectionMenu.className = "connection-menu";
+        connectionMenu.style.left = `${event.clientX}px`;
+        connectionMenu.style.top = `${event.clientY}px`;
+
+        let currentLabel = connection.label || "";
+
+        connectionMenu.innerHTML = `
+                <div>Edit Connection:</div>
+                <input type="text" id="connectionLabel" placeholder="Add label" value="${currentLabel}">
+                <button onclick="changeConnectionType('regular')">Regular</button>
+                <button onclick="changeConnectionType('express')">Express</button>
+                <button onclick="changeConnectionType('return')">Return</button>
+                <button onclick="changeConnectionType('international')">International</button>
+                <button onclick="saveConnectionLabel()">Save Label</button>
+                <button onclick="deleteConnection()">Delete</button>
+                <button onclick="cancelEditConnection()">Cancel</button>
+            `;
+
+        document.body.appendChild(connectionMenu);
+        document.getElementById("connectionLabel").focus();
+      }
+
+      function changeConnectionType(type) {
+        if (!selectedConnection) return;
+
+        // Remove existing type class
+        selectedConnection.element.classList.remove(
+          "regular",
+          "express",
+          "return",
+          "international"
+        );
+
+        // Add new type class
+        selectedConnection.element.classList.add(type);
+        selectedConnection.type = type;
+
+        addToHistory();
+      }
+
+      function saveConnectionLabel() {
+        if (!selectedConnection) return;
+
+        const labelInput = document.getElementById("connectionLabel");
+        const newLabel = labelInput.value.trim();
+
+        selectedConnection.label = newLabel;
+
+        // Update or create label element
+        if (selectedConnection.labelElement) {
+          if (newLabel) {
+            // Update existing label
+            const labelText =
+              selectedConnection.labelElement.querySelector("text");
+            labelText.textContent = newLabel;
+          } else {
+            // Remove label if empty
+            selectedConnection.labelElement.remove();
+            selectedConnection.labelElement = null;
+          }
+        } else if (newLabel) {
+          // Create new label
+          addConnectionLabel(selectedConnection, newLabel);
+        }
+
+        updateConnections();
+
+        connectionMenu.remove();
+        connectionMenu = null;
+        selectedConnection = null;
+
+        addToHistory();
+      }
+
+      function deleteConnection() {
+        if (!selectedConnection) return;
+
+        // Remove connection element
+        selectedConnection.element.remove();
+
+        // Remove label if exists
+        if (selectedConnection.labelElement) {
+          selectedConnection.labelElement.remove();
+        }
+
+        // Remove from connections array
+        const index = connections.findIndex(
+          (conn) =>
+            conn.start === selectedConnection.start &&
+            conn.end === selectedConnection.end
+        );
+
+        if (index !== -1) {
+          connections.splice(index, 1);
+        }
+
+        connectionMenu.remove();
+        connectionMenu = null;
+        selectedConnection = null;
+
+        addToHistory();
+      }
+
+      function cancelEditConnection() {
+        connectionMenu.remove();
+        connectionMenu = null;
+        selectedConnection = null;
+      }
+
+      function toggleConnectionMode() {
+        isConnecting = !isConnecting;
+
+        if (isConnecting) {
+          document.getElementById("connectBtn").textContent =
+            "Click source node...";
+        } else {
+          document.getElementById("connectBtn").textContent = "Connect Nodes";
+          if (sourceNode) {
+            sourceNode.classList.remove("selected");
+            sourceNode = null;
+          }
+        }
+      }
+
+      function editLabel(node) {
+        const label = node.querySelector(".node-label");
+        const originalText = label.textContent;
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.value = originalText;
+        input.style.width = "90%";
+
+        label.replaceWith(input);
+        input.focus();
+        input.select();
+
+        let isHandled = false;
+
+        const saveLabel = () => {
+          if (isHandled) return;
+          isHandled = true;
+
+          const newLabel = document.createElement("div");
+          newLabel.className = "node-label";
+          newLabel.textContent = input.value;
+
+          // Check if input is still in the DOM before replacing
+          if (input.parentNode) {
+            input.replaceWith(newLabel);
+            addToHistory();
+          }
+        };
+
+        input.addEventListener("blur", saveLabel);
+        input.addEventListener("keypress", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            saveLabel();
+          }
+        });
+      }
+
+      function exportPNG() {
+        // Temporarily disable grid for cleaner export
+        const originalBg = canvas.style.backgroundImage;
+        canvas.style.backgroundImage = "none";
+
+        html2canvas(canvas, {
+          backgroundColor: "white",
+          scale: window.devicePixelRatio,
+          x: 0,
+          y: 0,
+          width: canvas.offsetWidth,
+          height: canvas.offsetHeight,
+        }).then((canvas) => {
+          const link = document.createElement("a");
+          link.download = "logistics-flowchart.png";
+          link.href = canvas.toDataURL("image/png");
+          link.click();
+
+          // Restore grid
+          canvas.style.backgroundImage = originalBg;
+        });
+      }
+
+      function clearCanvas(addHistoryEntry = true) {
+        // Remove all nodes
+        nodes.forEach((node) => node.remove());
+        nodes = [];
+
+        // Remove all connections
+        connections.forEach((conn) => {
+          conn.element.remove();
+          if (conn.labelElement) {
+            conn.labelElement.remove();
+          }
+        });
+        connections = [];
+
+        if (addHistoryEntry) {
+          addToHistory();
+        }
+      }
+
+      // Initialize history
+      addToHistory();
+
+      // Initial update to set button states
+      updateHistoryButtons();
+      
+    </script>
+  </body>
+</html>
