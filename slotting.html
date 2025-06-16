@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Warehouse Slotting Tool</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="https://unpkg.com/tabulator-tables@6.2.1/dist/css/tabulator.min.css" rel="stylesheet">
+
+<style>
+/* ---------- ROOT THEME ---------- */
+:root{
+  --bg:#03150b;             /* deep forest green */
+  --panel:#06210f;          /* darker panel */
+  --accent:#00eaff;         /* neon blue */
+  --accent-2:#1dfc8d;       /* vibrant green */
+  --accent-soft:rgba(29,252,141,.25);
+  --text:#d6ffe4;
+  --text-muted:#8ac8a4;
+  --danger:#ff4e4e;
+  --dock:#1570ff;
+  --obst:#2d4e36;
+  --radius:.7rem;
+  --speed:.25s;
+  --glow:0 0 8px var(--accent-2),0 0 18px var(--accent);
+  font-family:"Segoe UI",Inter,Roboto,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0}
+
+/* ---------- GLOBAL ---------- */
+body{
+  background:radial-gradient(ellipse at bottom,var(--bg) 0%,#01080a 100%);
+  color:var(--text);
+  overflow-x:hidden;
+}
+body::before{ /* falling rain lines */
+  content:"";
+  position:fixed;inset:0;
+  background:repeating-linear-gradient(
+              0deg,
+              rgba(255,255,255,.06) 0px,
+              rgba(255,255,255,.06) 2px,
+              transparent 2px,transparent 6px);
+  pointer-events:none;
+  animation:rain 0.5s linear infinite;
+  opacity:.35;
+}
+@keyframes rain{from{transform:translateY(-100%);}to{transform:translateY(100%);}}
+
+h1{
+  margin:1.1rem 0 .6rem;
+  text-align:center;
+  font-weight:700;
+  color:var(--accent-2);
+  text-shadow:var(--glow);
+  letter-spacing:.05em;
+}
+
+/* ---------- LAYOUT ---------- */
+.container{max-width:1400px;margin:auto;padding:1.2rem;display:flex;flex-direction:column;gap:1.6rem}
+.controls{display:flex;flex-direction:column;gap:1.4rem}
+
+fieldset.control-panel{
+  background:var(--panel);
+  border:1px solid #255136;
+  border-radius:var(--radius);
+  padding:1.4rem;
+  transition:border var(--speed),box-shadow var(--speed);
+}
+fieldset.control-panel:hover{border-color:var(--accent-soft);box-shadow:0 0 14px var(--accent-soft)}
+fieldset.control-panel legend{
+  padding:0 .9rem;
+  font-size:1.1rem;
+  font-weight:700;
+  color:var(--accent);
+}
+
+.group{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.2rem;margin-top:1.4rem}
+.group:first-of-type{margin-top:0}
+.group h3{
+  grid-column:1/-1;
+  margin:.4rem 0 .6rem;
+  color:var(--accent-2);
+  font-size:1rem;
+  font-weight:600;
+  letter-spacing:.03em;
+}
+
+label{display:flex;flex-direction:column;gap:.3rem;font-size:.875rem}
+input,textarea{
+  background:#02110b;
+  border:1px solid #25412f;
+  border-radius:var(--radius);
+  color:var(--text);
+  padding:.55rem .75rem;
+  font-size:.875rem;
+  transition:border var(--speed),box-shadow var(--speed)
+}
+input:focus,textarea:focus{outline:none;border-color:var(--accent-2);box-shadow:0 0 8px var(--accent-soft)}
+input::placeholder,textarea::placeholder{color:var(--text-muted);font-style:italic}
+small{color:var(--text-muted)}
+
+button{
+  border:none;
+  background:transparent;
+  color:var(--accent);
+  border:1px solid var(--accent);
+  padding:.6rem 1.2rem;
+  border-radius:var(--radius);
+  font-weight:600;
+  transition:color var(--speed),box-shadow var(--speed),transform var(--speed)
+}
+button:hover:not(:disabled){box-shadow:var(--glow);transform:translateY(-2px)}
+button:disabled{opacity:.45;border-color:#555;cursor:not-allowed}
+
+#fileStatus{font-size:.8rem;color:var(--text-muted);word-break:break-all;margin-top:.3rem}
+
+/* ---------- DETAILS / ACCORDION ---------- */
+.details-wrapper details{background:var(--panel);border:1px solid #25412f;border-radius:var(--radius);overflow:hidden}
+.details-wrapper details[open]>summary{border-bottom:1px solid #25412f}
+summary{
+  padding:.88rem 1.1rem;
+  cursor:pointer;user-select:none;
+  font-weight:600;
+  color:var(--accent);
+  transition:background var(--speed)
+}
+summary:hover{background:#0b1611}
+.plot-container{width:100%;min-height:400px}
+
+/* ---------- TABULATOR OVERRIDES ---------- */
+.tabulator{
+  background:transparent;
+  border:1px solid #25412f !important;
+  border-radius:var(--radius);
+  width:100%;
+}
+.tabulator .tabulator-header{background:#0c1c13;border-bottom:1px solid #25412f}
+.tabulator .tabulator-col,.tabulator .tabulator-cell{background:transparent;color:var(--text);border-right:1px solid #25412f}
+.tabulator .tabulator-row:hover .tabulator-cell{background:#152816}
+#rawTable,#optTable{height:60vh}
+
+/* ---------- Special cell styles ---------- */
+.dock-cell,.obst-cell{
+  font-weight:700;color:#fff;border-radius:var(--radius);padding:.2rem .4rem;display:inline-block;width:100%;text-align:center;
+}
+.dock-cell{background:var(--dock)}
+.obst-cell{background:var(--obst)}
+
+/* ---------- Alert ---------- */
+.alert{margin-top:.9rem;background:#3d0006;border:1px solid var(--danger);padding:.7rem 1rem;border-radius:var(--radius);color:#ffc7c7;font-size:.85rem;}
+
+/* ---------- Scrollbar (WebKit) ---------- */
+::-webkit-scrollbar{height:8px;width:8px}
+::-webkit-scrollbar-track{background:#06120a;border-radius:4px}
+::-webkit-scrollbar-thumb{background:#2e4534;border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:#446252}
+</style>
+</head>
+<body>
+<h1>Warehouse Slotting Tool</h1>
+<div class="container">
+<!-- -------------------- CONTROLS -------------------- -->
+<div class="controls">
+  <fieldset class="control-panel">
+    <legend>Configuration</legend>
+
+    <!-- File upload -->
+    <div class="group">
+      <h3>File</h3>
+      <label>Upload file
+        <input type="file" id="csvInput" accept=".csv,text/csv" placeholder="Select .csv file">
+      </label>
+      <span id="fileStatus" aria-live="polite"></span>
+    </div>
+
+    <!-- Dock & Obstacles -->
+    <div class="group">
+      <h3>Docks & Obstacles</h3>
+      <label>Dock (row, col — e.g. <strong>0,0</strong>)
+        <input type="text" id="dockInput" placeholder="0,0">
+      </label>
+      <label>Obstacles (row, col pairs — e.g. <strong>1,3  2,4  5,6</strong>)
+        <textarea id="obstaclesInput" rows="3" placeholder="1,3  2,4  5,6"></textarea>
+      </label>
+    </div>
+
+    <!-- ABC Ratios -->
+    <div class="group">
+      <h3>ABC Ratios (%)</h3>
+      <label>A % <input type="number" id="ratioA" min="0" max="100" value="20"></label>
+      <label>B % <input type="number" id="ratioB" min="0" max="100" value="30"></label>
+      <label>C % <input type="number" id="ratioC" min="0" max="100" value="50" readonly></label>
+    </div>
+
+    <!-- Distance Parameters -->
+    <div class="group">
+      <h3>Distance Parameters</h3>
+      <label>Step cost <input type="number" id="stepCost" min="0" step="0.1" value="1.0"></label>
+      <label>Turn cost <input type="number" id="turnCost" min="0" step="0.1" value="0.5"></label>
+      <label>Obstacle cost <input type="number" id="obstCost" min="0" step="0.1" value="5.0"></label>
+      <small>Paths are allowed through obstacles (cost applies).</small>
+    </div>
+
+    <!-- Actions -->
+    <div class="group actions">
+      <h3>Actions</h3>
+      <button id="runBtn" disabled>Run Optimization</button>
+      <button id="downloadBtn" disabled>Download CSV</button>
+      <button id="resetBtn">Reset All</button>
+    </div>
+  </fieldset>
+</div>
+
+<!-- -------------------- OUTPUT -------------------- -->
+<div class="details-wrapper">
+  <details open><summary>Raw Grid Preview</summary><div id="rawTable"></div></details>
+  <details><summary>Pareto Analysis</summary><div id="paretoChart" class="plot-container"></div></details>
+  <details><summary>Initial Heatmap</summary><div id="initialHeatmap" class="plot-container"></div></details>
+  <details><summary>Optimized Layout (Heatmap)</summary><div id="optHeatmap" class="plot-container"></div></details>
+  <details><summary>Optimized Layout (Table)</summary><div id="optTable"></div></details>
+  <div id="msg"></div>
+</div>
+</div>
+
+<!-- -------------------- LIBRARIES -------------------- -->
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://unpkg.com/tabulator-tables@6.2.1/dist/js/tabulator.min.js"></script>
+
+<!-- -------------------- APP -------------------- -->
+<script type="module">
+/* ========== STATE & HELPERS ========== */
+const $=id=>document.getElementById(id);
+const state={grid:null,skuList:[],ratios:{a:20,b:30,c:50},dock:null,obstacles:new Set(),optimized:null};
+const coordKey=(r,c)=>`${r},${c}`;
+function parseCoord(str){
+  str=str.replace(/[()]/g,"").trim();
+  const p=str.includes(",")?str.split(","):str.split(/\s+/);
+  if(p.length!==2)return null;
+  const r=+p[0].trim(),c=+p[1].trim();
+  return Number.isFinite(r)&&Number.isFinite(c)?{r,c}:null;
+}
+const setStatus=msg=>$("fileStatus").textContent=msg;
+const notify=html=>$("msg").innerHTML=`<div class="alert">${html}</div>`;
+
+/* ---- CSV loader ---- */
+function parseCSV(file){
+  return new Promise((resolve,reject)=>{
+    Papa.parse(file,{
+      skipEmptyLines:"greedy",dynamicTyping:false,
+      complete:({data,errors})=>{
+        if(errors.length)return reject(new Error(errors[0].message));
+        if(!data.length)return reject(new Error("CSV is empty"));
+        const w=Math.max(...data.map(r=>r.length));
+        const g=data.map(r=>{
+          if(r.length<w)r.push(...Array(w-r.length).fill(""));
+          return r.map(v=>{
+            if(v==null||v.toString().trim()==="")return 0;
+            const n=+v;return Number.isFinite(n)?n:0;
+          });
+        });
+        resolve(g);
+      }
+    });
+  });
+}
+
+/* ---- SKU / ABC ---- */
+const buildSKU=g=>{
+  const list=[],rows=g.length,cols=g[0].length;let id=0;
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)list.push({sku:id++,freq:g[r][c],r,c});
+  return list.sort((a,b)=>b.freq-a.freq);
+};
+function classify(list,{a,b}){
+  const tot=list.reduce((s,o)=>s+o.freq,0);let cum=0,
+        thrA=a/100,thrB=(a+b)/100;
+  list.forEach(o=>{cum+=o.freq;o.class=(cum/tot)<=thrA?"A":(cum/tot)<=thrB?"B":"C";});
+}
+
+/* ---- Cost ---- */
+function costMatrix(rows,cols,dock,obs,{step,turn,obst}){
+  const has=(r,c)=>obs.has(coordKey(r,c));
+  const M=Array.from({length:rows},()=>new Float64Array(cols));
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+    if(r===dock.r&&c===dock.c){M[r][c]=0;continue;}
+    const dr=Math.abs(r-dock.r),dc=Math.abs(c-dock.c),base=(dr+dc)*step+(dr&&dc?turn:0);
+    const cost=rowFirst=>{
+      let x=0;
+      const rs=[...Array(dr).keys()].map(i=>dock.r+Math.sign(r-dock.r)*(i+1));
+      const cs=[...Array(dc).keys()].map(i=>dock.c+Math.sign(c-dock.c)*(i+1));
+      if(rowFirst){
+        rs.forEach(rr=>{if(has(rr,dock.c))x+=obst;});
+        cs.forEach(cc=>{if(has(r,cc))x+=obst;});
+      }else{
+        cs.forEach(cc=>{if(has(dock.r,cc))x+=obst;});
+        rs.forEach(rr=>{if(has(rr,c))x+=obst;});
+      }
+      return base+x;
+    };
+    M[r][c]=Math.min(cost(true),cost(false));
+  }
+  return M;
+}
+
+/* ---- Trim SKUs ---- */
+function trimSKUs(list,cm,slots){
+  let excess=list.length-slots; if(excess<=0)return list;
+  const classes=["C","B","A"]; let res=[...list];
+  for(const cls of classes){
+    if(excess<=0)break;
+    const same=res.filter(o=>o.class===cls)
+                  .sort((a,b)=>cm[b.r][b.c]-cm[a.r][a.c]);
+    const n=Math.min(excess,same.length);
+    res=res.filter(o=>!same.slice(0,n).includes(o)); excess-=n;
+  }
+  return res;
+}
+
+/* ---- Allocate ---- */
+function allocate(list,rows,cols,cm,dock,obs){
+  const free=[];for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+    if(r===dock.r&&c===dock.c)continue;if(obs.has(coordKey(r,c)))continue;
+    free.push({r,c,cost:cm[r][c]});
+  }
+  free.sort((a,b)=>a.cost-b.cost);
+  if(list.length>free.length)list=trimSKUs(list,cm,free.length);
+  const grid=Array.from({length:rows},()=>Array(cols).fill(""));
+  grid[dock.r][dock.c]="DOCK";obs.forEach(k=>{const[p,q]=k.split(",");grid[p][q]="OBST";});
+  for(const cls of["A","B","C"])for(const s of list.filter(o=>o.class===cls)){
+    const slot=free.shift(); if(!slot)continue; grid[slot.r][slot.c]=s.sku;
+  }
+  return grid;
+}
+
+/* ---- Render ---- */
+function renderTable(el,data,style=false){
+  el._tab&&el._tab.destroy();
+  const cols=data[0].map((_,i)=>({
+    title:i,field:"c"+i,hozAlign:"center",formatter:style?fmt:null
+  }));
+  const rows=data.map(r=>Object.fromEntries(r.map((v,i)=>["c"+i,v])));
+  el._tab=new Tabulator(el,{data:rows,columns:cols,layout:"fitDataStretch",height:"60vh"});
+  function fmt(cell){
+    const v=cell.getValue();
+    if(v==="DOCK")return `<span class="dock-cell">DOCK</span>`;
+    if(v==="OBST")return `<span class="obst-cell">OBST</span>`;
+    return v;
+  }
+}
+const heat=(z,el,title,cs="Plotly3")=>Plotly.newPlot(el,[{z,type:"heatmap",colorscale:cs,showscale:false}],
+  {title,margin:{t:40,l:50,r:10,b:40},yaxis:{autorange:"reversed"}},{responsive:true});
+function pareto(list){
+  const x=list.map(o=>"SKU"+o.sku),y=list.map(o=>o.freq),
+        tot=y.reduce((a,b)=>a+b,0),cum=y.map((v,i)=>y.slice(0,i+1).reduce((a,b)=>a+b,0)/tot*100);
+  Plotly.newPlot("paretoChart",
+    [{x,y,type:"bar",name:"Frequency"},
+     {x,y:cum,type:"scatter",mode:"lines+markers",name:"Cumulative %",yaxis:"y2"}],
+    {title:"Pareto Analysis",yaxis:{title:"Frequency"},
+     yaxis2:{title:"Cumulative %",overlaying:"y",side:"right",range:[0,100]},margin:{t:40,r:50}},
+    {responsive:true});
+}
+
+/* ---------- UI ---------- */
+$("csvInput").addEventListener("change",async e=>{
+  notify("");const f=e.target.files[0];if(!f){setStatus("");return;}
+  try{
+    setStatus("Parsing…");state.grid=await parseCSV(f);
+    setStatus(`Loaded ${state.grid.length}×${state.grid[0].length}`);
+    state.skuList=buildSKU(state.grid); classify(state.skuList,state.ratios);
+    renderTable($("rawTable"),state.grid); heat(state.grid,"initialHeatmap","Initial Pick Frequencies"); pareto(state.skuList);
+    $("runBtn").disabled=false;
+  }catch(err){alert(err.message);setStatus("Failed");}
+});
+["ratioA","ratioB"].forEach(id=>$(id).addEventListener("input",()=>{
+  const a=+$("ratioA").value,b=+$("ratioB").value; $("ratioC").value=Math.max(0,100-a-b);
+  state.ratios={a:+$("ratioA").value,b:+$("ratioB").value,c:+$("ratioC").value};
+  if(state.skuList.length){classify(state.skuList,state.ratios);pareto(state.skuList);}
+}));
+$("runBtn").addEventListener("click",()=>{
+  try{
+    notify("");
+    if(!state.grid)throw new Error("No grid loaded");
+    const dock=parseCoord($("dockInput").value); if(!dock)throw new Error("Invalid dock coordinate");
+    if(dock.r<0||dock.c<0||dock.r>=state.grid.length||dock.c>=state.grid[0].length)
+      throw new Error("Dock outside grid"); state.dock=dock; state.obstacles.clear();
+    ($("obstaclesInput").value.match(/-?\d+\s*,\s*-?\d+|-?\d+\s+-?\d+/g)||[])
+      .forEach(s=>{const o=parseCoord(s); if(!o)return;
+        if(o.r===dock.r&&o.c===dock.c)return;
+        if(o.r<0||o.c<0||o.r>=state.grid.length||o.c>=state.grid[0].length)return;
+        state.obstacles.add(coordKey(o.r,o.c));});
+    if(state.ratios.a+state.ratios.b+state.ratios.c!==100)
+      throw new Error("ABC ratios must equal 100");
+    const cm=costMatrix(state.grid.length,state.grid[0].length,dock,state.obstacles,
+      {step:+$("stepCost").value,turn:+$("turnCost").value,obst:+$("obstCost").value});
+    const before=state.skuList.length;
+    state.optimized=allocate(state.skuList,state.grid.length,state.grid[0].length,cm,dock,state.obstacles);
+    const placed=state.optimized.flat().filter(v=>typeof v==="number").length;
+    const dropped=before-placed;
+    if(dropped)notify(`${dropped} low-priority SKU(s) were discarded (insufficient free slots).`);
+    const colour=state.optimized.map(r=>r.map(v=>{
+      if(v==="DOCK")return 4;if(v==="OBST")return 0;
+      const cls=state.skuList.find(o=>o.sku===v)?.class;return cls==="A"?3:cls==="B"?2:1;
+    }));
+    heat(colour,"optHeatmap","Optimized Layout",
+      [[0,"black"],[0.25,"green"],[0.5,"orange"],[0.75,"red"],[1,"blue"]]);
+    renderTable($("optTable"),state.optimized,true); $("downloadBtn").disabled=false;
+    document.querySelectorAll('#optHeatmap,#optTable').forEach(el=>el.parentElement.open=true);
+  }catch(err){alert(err.message);}
+});
+$("downloadBtn").addEventListener("click",()=>{
+  const csv=state.optimized.map(r=>r.join(",")).join("\n");
+  const blob=new Blob([csv],{type:"text/csv"});const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);a.download="optimized_grid.csv";a.click();URL.revokeObjectURL(a.href);
+});
+$("resetBtn").addEventListener("click",()=>location.reload());
+</script>
+</body>
+</html>
