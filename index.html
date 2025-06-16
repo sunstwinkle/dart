@@ -1,157 +1,306 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Art Gallery</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-        }
-        
-        /* Верхняя часть */
-        header {
-            background-color: #004d1f; /* Темно-зеленый */
-            color: white;
-            text-align: center;
-            padding: 50px 0;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Art Gallery</title>
+  
+  <!-- Google Fonts (optional, looks clean & modern) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
 
-        header h1 {
-            font-size: 3em;
-        }
+  <style>
+    /* =====================================================================
+       CSS VARIABLES & RESET
+       =====================================================================*/
+    :root {
+      /* Brand Colors → green ⇢ blue gradient  */
+      --green-dark: #004d1f;
+      --green: #006634;
+      --green-light: #4d944d;
+      --blue: #0066ff;
+      --blue-soft: #0099ff55;
+      --bg: #f4fff7;            /* page background */
+      --text-main: #102113;     /* almost‑black for readability */
+      --text-light: #3c5e43;    /* muted */
+      --panel: #ffffffee;       /* translucent white */
+      --radius: 0.75rem;
+      --transition: 220ms ease;
+      --shadow: 0 8px 18px -4px #0002;
+    }
 
-        /* Нижняя часть */
-        nav {
-            background-color: #006634; /* Немного светлее зеленый */
-            display: flex;
-            justify-content: center;
-            padding: 10px;
-        }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      line-height: 1.5;
+    }
 
-        nav a {
-            color: white;
-            text-decoration: none;
-            padding: 15px 20px;
-            margin: 0 10px;
-            font-size: 1.2em;
-        }
+    /* =====================================================================
+       HEADER / HERO (full‑width)
+       =====================================================================*/
+    header {
+      background: linear-gradient(135deg, var(--green-dark) 0%, var(--green) 35%, var(--blue) 100%);
+      color: #fff;
+      text-align: center;
+      padding: 4rem 2rem 6rem;
+      position: relative;
+      overflow: hidden;
+    }
 
-        nav a:hover {
-            background-color: #4d944d;
-        }
+    /* simple, lightweight floating sparkles animation */
+    header::before, header::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 50%, #ffffff55 0%, transparent 70%) 0 0 / 12vmin 12vmin repeat;
+      animation: sparkle 20s linear infinite;
+      opacity: 0.25;
+    }
+    header::after {
+      animation-duration: 30s;
+      animation-direction: reverse;
+    }
+    @keyframes sparkle {
+      0%   { transform: translateY(0);   }
+      100% { transform: translateY(-100%); }
+    }
 
-        /* Секции */
-        section {
-            padding: 60px 20px;
-            text-align: center;
-        }
+    header h1 {
+      font-weight: 800;
+      font-size: clamp(2.5rem, 4vw + 1rem, 4rem);
+      margin: 0;
+      text-shadow: 0 2px 6px #0004;
+    }
 
-        /* Изображения на фон */
-        .background-image {
-            background-image: url('image1.jpg'); /* Ссылка на изображение */
-            background-size: cover;
-            background-position: center;
-            height: 500px;
-            margin-bottom: 40px;
-        }
+    /* =====================================================================
+       NAVIGATION  (sticky, horizontally scrollable, easy to extend)
+       =====================================================================*/
+    nav {
+      background: var(--green);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      overflow-x: auto;      /* allows extra buttons to be added without breaking */
+      white-space: nowrap;   /* keep buttons on a single row */
+      display: flex;
+      gap: 0.25rem;
+      padding: 0.5rem 1rem;
+      box-shadow: var(--shadow);
+    }
 
-        .about-section {
-            background-color: #f4f4f4;
-            padding: 40px;
-        }
+    nav a {
+      display: inline-block;
+      color: #fff;
+      text-decoration: none;
+      padding: 0.65rem 1.25rem;
+      font-size: 1rem;
+      border-radius: var(--radius);
+      transition: background var(--transition), transform var(--transition);
+    }
+    nav a:hover {
+      background: var(--green-light);
+      transform: translateY(-2px);
+    }
 
-        .about-section h2 {
-            font-size: 2.5em;
-        }
+    /* =====================================================================
+       HERO IMAGE SECTION (replace image url below if desired)
+       =====================================================================*/
+    .background-image {
+      background-image: url("https://images.pexels.com/photos/102127/pexels-photo-102127.jpeg");
+      background-size: cover;
+      background-position: center;
+      min-height: 55vh;
+      position: relative;
+      display: grid;
+      place-items: center;
+    }
+    .background-image::after {
+      /* glassy overlay so text (if any) is readable */
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: #0003;
+    }
 
-        .about-section p {
-            font-size: 1.2em;
-            line-height: 1.6;
-            color: #333;
-        }
+    /* =====================================================================
+       GENERIC SECTION STYLES
+       =====================================================================*/
+    section {
+      padding: 4rem 1rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    h2 {
+      font-size: clamp(1.75rem, 3vw + 1rem, 3rem);
+      margin-top: 0;
+    }
+    p {
+      max-width: 70ch;
+      margin-inline: auto;
+      font-size: 1.125rem;
+      color: var(--text-light);
+    }
 
-        .artworks-section {
-            background-color: #e4f0e4;
-            padding: 40px;
-        }
+    /* =====================================================================
+       CALL‑TO‑ACTION BUTTON (re‑usable class)
+       =====================================================================*/
+    .button {
+      display: inline-block;
+      margin-top: 1.5rem;
+      padding: 0.75rem 1.75rem;
+      background: var(--green);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+      border-radius: var(--radius);
+      transition: background var(--transition), transform var(--transition);
+    }
+    .button:hover {
+      background: var(--green-light);
+      transform: translateY(-2px);
+    }
 
-        .artworks-section h2 {
-            font-size: 2.5em;
-        }
+    /* =====================================================================
+       ABOUT SECTION (light panel look)
+       =====================================================================*/
+    .about-section {
+      background: var(--panel);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(4px);
+    }
 
-        /* Кнопки */
-        .button {
-            background-color: #006634;
-            color: white;
-            padding: 10px 20px;
-            font-size: 1.2em;
-            text-decoration: none;
-            border-radius: 5px;
-            margin-top: 20px;
-        }
+    /* =====================================================================
+       ARTWORKS – responsive masonry grid (pure CSS)
+       =====================================================================*/
+    .artworks-section {
+      background: #e4f0e4;   /* very light green tint */
+    }
 
-        .button:hover {
-            background-color: #4d944d;
-        }
+    .gallery {
+      margin-top: 3rem;
+      columns: 1 14rem;
+      gap: 1rem;
+    }
+    .gallery img {
+      width: 100%;
+      border-radius: var(--radius);
+      break-inside: avoid;
+      box-shadow: 0 2px 6px #0001;
+      transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .gallery img:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 20px -6px #0003;
+    }
 
-        /* Размещение языка */
-        .language-settings {
-            position: absolute;
-            right: 20px;
-            top: 20px;
-        }
-    </style>
+    /* =====================================================================
+       LANGUAGE & SETTINGS (fixed button group – add your JS later)
+       =====================================================================*/
+    .language-settings {
+      position: fixed;
+      right: 1rem;
+      bottom: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      z-index: 1001;
+    }
+    .language-settings button {
+      padding: 0.6rem 0.9rem;
+      font-size: 0.9rem;
+      border: none;
+      border-radius: var(--radius);
+      background: var(--green);
+      color: #fff;
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+    .language-settings button:hover {
+      background: var(--green-light);
+    }
+
+    /* For accessibility on small screens */
+    @media (max-width: 600px) {
+      nav a { font-size: 0.9rem; padding: 0.5rem 0.9rem; }
+      .language-settings { right: 0.5rem; bottom: 0.5rem; }
+    }
+  </style>
 </head>
 <body>
 
-    <!-- Верхний Header с названием галереи -->
-    <header>
-        <h1>Art Gallery</h1>
-    </header>
+  <!-- ============================= HEADER ============================== -->
+  <header>
+    <h1>Art Gallery</h1>
+  </header>
 
-    <!-- Навигация -->
-    <nav>
-        <a href="https://drive.google.com/file/d/132q5axnJOuFk90DcO1Ya2DZPQt2dDwIp/view?usp=drivesdk">Logistics Assignment</a>
-        <a href="https://sunstwinkle.github.io/Logistics2/">Flow Chart</a>
-        <a href="tsp.html">TSP GAME</a>
-        <a href="slotting.html">Slotting Tool</a>
-        <a href="https://docs.google.com/document/d/1A85FEetCshN7iIPgYEVGVTAH5s2cdVuaCKOM0AML5WA/edit?tab=t.0">Design Thinking</a>
-        <a href="tsp.html">TSP GAME</a>
-    </nav>
+  <!-- ============================= NAVIGATION ========================== -->
+  <!-- Add <a> links freely – nav scrolls horizontally if needed -->
+  <nav>
+    <a href="https://drive.google.com/file/d/132q5axnJOuFk90DcO1Ya2DZPQt2dDwIp/view?usp=drivesdk" target="_blank">Logistics Assignment</a>
+    <a href="https://sunstwinkle.github.io/Logistics2/" target="_blank">Flow Chart</a>
+    <a href="tsp.html" target="_blank">TSP Game</a>
+    <a href="slotting.html" target="_blank">Slotting Tool</a>
+    <a href="https://docs.google.com/document/d/1A85FEetCshN7iIPgYEVGVTAH5s2cdVuaCKOM0AML5WA/edit?tab=t.0" target="_blank">Design Thinking</a>
+    <!-- EXAMPLE of adding a new button easily: -->
+    <!-- <a href="yourNewLink.html">New Button</a> -->
+  </nav>
 
-    <!-- Секция фона с изображением -->
-    <section class="background-image"></section>
+  <!-- ============================= HERO IMAGE ========================= -->
+  <section class="background-image"></section>
 
-    <!-- About Me секция -->
-    <section class="about-section">
-        <h2>About Me</h2>
-        <p>Welcome to my digital art gallery. I am a beginner artist passionate about creating unique pieces of art. Here, you will find my journey and the tools I use to bring my vision to life.</p>
-        <a href="#" class="button">Learn More</a>
-    </section>
+  <!-- ============================= ABOUT ============================== -->
+  <section class="about-section">
+    <h2>About Me</h2>
+    <p>
+      Welcome to my digital art gallery. I am a beginner artist passionate about creating unique pieces of art.
+      Here you can follow my journey and discover the tools I use to bring my vision to life.
+    </p>
+    <a href="#artworks" class="button">Learn More</a>
+  </section>
 
-    <!-- Artworks секция -->
-    <section class="artworks-section">
-        <h2>My Artworks</h2>
-        <p>Explore my collection of digital artworks. I draw inspiration from nature, culture, and my personal experiences. Click below to see more of my art.</p>
-        <a href="#" class="button">View Artworks</a>
-    </section>
+  <!-- ============================= ARTWORKS =========================== -->
+  <section id="artworks" class="artworks-section">
+    <h2>My Artworks</h2>
+    <p>
+      Explore my collection of digital artworks inspired by nature, culture and personal experiences.
+      Click any image to view it in high resolution.
+    </p>
 
-    <!-- Языковые настройки -->
-    <div class="language-settings">
-        <button>Language</button>
-        <button>Settings</button>
+    <!-- Responsive image masonry. Replace URLs with your images (add/remove freely) -->
+    <div class="gallery">
+      <img src="https://images.pexels.com/photos/34950/pexels-photo.jpg" alt="Artwork 1">
+      <img src="https://images.pexels.com/photos/713056/pexels-photo-713056.jpeg" alt="Artwork 2">
+      <img src="https://images.pexels.com/photos/21264/pexels-photo.jpg" alt="Artwork 3">
+      <img src="https://images.pexels.com/photos/227675/pexels-photo-227675.jpeg" alt="Artwork 4">
+      <!-- Add more <img> tags as needed -->
     </div>
+  </section>
 
+  <!-- ============================= LANGUAGE & SETTINGS =============== -->
+  <!-- Placeholder buttons → add JS handlers if/when needed -->
+  <div class="language-settings">
+    <button onclick="alert('Language settings coming soon!')">Language</button>
+    <button onclick="alert('More settings coming soon!')">Settings</button>
+  </div>
+
+  <!-- ================================================================== -->
+  <!-- You can add custom JavaScript below for interactivity (optional)   -->
+  <!-- ================================================================== -->
+  <script>
+    // Example: smooth scroll to sections
+    document.querySelectorAll('a[href^="#"]').forEach(link => {
+      link.addEventListener('click', e => {
+        e.preventDefault();
+        const id = link.getAttribute('href').substring(1);
+        const section = document.getElementById(id);
+        section?.scrollIntoView({ behavior: 'smooth' });
+      });
+    });
+  </script>
 </body>
-</html><style>
-    .background-image {
-        background-image: url('https://images.pexels.com/photos/102127/pexels-photo-102127.jpeg');
-        background-size: cover;
-        background-position: center;
-        height: 500px;
-        margin-bottom: 40px;
-    }
-</style>
+</html>
 
